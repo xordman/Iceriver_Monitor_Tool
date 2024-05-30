@@ -15,6 +15,11 @@ You can download the latest version of the tool from the [releases](https://gith
 
 ![Screenshot 1](images/screenshot1.png)
 ![Screenshot 2](images/screenshot2.png)
+![Screenshot 2](images/screenshot3.png)
+![Screenshot 2](images/screenshot4.png)
+![Screenshot 2](images/screenshot5.png)
+![Screenshot 2](images/screenshot6.png)
+![Screenshot 2](images/screenshot7.png)
 
 ## License
 
