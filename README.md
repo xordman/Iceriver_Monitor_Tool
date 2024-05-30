@@ -7,7 +7,7 @@ This repository contains the Iceriver Monitor Tool executable, images, and instr
 
 ## Download
 
-You can download the latest version of the tool from the [releases](https://github.com/your-username/Iceriver_Monitor_Tool/releases) page.
+You can download the latest version of the tool from the [releases](https://github.com/xordman/Iceriver_Monitor_Tool/releases) page.
 
 ## Installation
 
