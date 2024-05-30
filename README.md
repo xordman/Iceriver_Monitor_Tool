@@ -3,6 +3,8 @@
 At the moment, everything is configured only under KSpro
 I don't have other icerivers to test
 
+After adding the first worker, you need to restart the program so that it starts making requests, then all other workers should be added normally, if requests for workers do not come, you need to add them all, restart the program and everything will work. I will fix this in future versions
+
 This repository contains the Iceriver Monitor Tool executable, images, and instructions.
 
 ## Download
