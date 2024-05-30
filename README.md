@@ -24,3 +24,10 @@ You can download the latest version of the tool from the [releases](https://gith
 ## License
 
 This project is licensed under the terms of the MIT license.
+
+Donation Links
+If you want to support me, here are the donation links:
+
+PayPal: xordman@gmail.com
+KAS: kaspa:qpxk4jrk4jfec3lc3wfcat8pt7kh2vsetm7p9euf3u6zfadyq72uja2767j6z
+USDT (TRC20): TL9EDTRswXiFr1P8MzjErCBi1LbJzukszu
