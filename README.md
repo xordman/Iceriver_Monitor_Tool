@@ -1,5 +1,8 @@
 # Iceriver Monitor Tool
 
+At the moment, everything is configured only under KSpro
+I don't have other icerivers to test
+
 This repository contains the Iceriver Monitor Tool executable, images, and instructions.
 
 ## Download
