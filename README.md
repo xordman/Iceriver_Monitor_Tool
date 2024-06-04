@@ -1,5 +1,10 @@
 # Iceriver Monitor Tool
 
+
+I did a virus-total test, it is interesting that some antiviruses show that there is a Trojan here))
+I will think about whether to give the source code publicly, but for now you can familiarize yourself with all the work of the program on the site
+https://www.virustotal.com/gui/file/686605f36cc9fff052824766a72c38f7095ead9fd74b607120e51794253bddc2/detection
+
 At the moment, everything is configured only under KSpro
 I don't have other icerivers to test
 
