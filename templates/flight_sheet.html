@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Sheet</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <style>
+        .container {
+            margin-left: 200px;
+        }
+        .input-group-append {
+            margin-left: 10px;
+        }
+        .error {
+            color: red;
+            font-size: 0.9em;
+        }
+        .block {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        /* Стилі для спливаючих повідомлень */
+        #notification-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+            max-width: 300px;
+        }
+        .notification {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .notification.success {
+            background-color: #4caf50; /* Зелений для успіху */
+        }
+        .notification.error {
+            background-color: #f44336; /* Червоний для помилки */
+        }
+    </style>
+    <script>
+        $(document).ready(function(){
+            // Функція для відображення спливаючих повідомлень
+            function showNotification(message, type = 'success', duration = 5000) {
+                const notificationContainer = document.getElementById('notification-container');
+                
+                // Створюємо новий елемент для повідомлення
+                const notification = document.createElement('div');
+                notification.classList.add('notification', type);
+                notification.innerText = message;
+
+                // Додаємо нове повідомлення у контейнер
+                notificationContainer.appendChild(notification);
+
+                // Таймер для автоматичного зникнення повідомлення
+                setTimeout(() => {
+                    notification.style.opacity = '0'; // Початок анімації зникнення
+                    setTimeout(() => {
+                        notification.remove(); // Видалення з DOM після анімації
+                    }, 500);
+                }, duration);
+            }
+
+            function updateLastUpdateTime() {
+                const now = new Date();
+                const formattedTime = now.toLocaleString();
+                $("#last-update").text(`Last update: ${formattedTime}`);
+            }
+
+            function fetchFlightSheets() {
+                $.getJSON("/flight_sheets", function(data) {
+                    $("#flight-sheet-list").empty();
+                    $.each(data, function(index, sheet) {
+                        $("#flight-sheet-list").append(
+                            `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${sheet.name}
+                                <div>
+                                    <button class="btn btn-warning btn-sm edit-flight-sheet" data-name="${sheet.name}">Edit</button>
+                                    <button class="btn btn-danger btn-sm remove-flight-sheet" data-name="${sheet.name}">Remove</button>
+                                    <button class="btn btn-success btn-sm apply-flight-sheet-to-all" data-name="${sheet.name}">Apply to All</button>
+                                </div>
+                            </li>`
+                        );
+                    });
+
+                    // Видалення flight sheet
+                    $(".remove-flight-sheet").click(function() {
+                        let name = $(this).data("name");
+                        $.post("/remove_flight_sheet", {name: name}, function() {
+                            showNotification(`Flight sheet ${name} removed successfully`, 'success');
+                            fetchFlightSheets();
+                        }).fail(function() {
+                            showNotification(`Error removing flight sheet: ${name}`, 'error');
+                        });
+                    });
+
+                    // Редагування flight sheet
+                    $(".edit-flight-sheet").click(function() {
+                        let name = $(this).data("name");
+                        $.getJSON(`/flight_sheet/${name}`, function(data) {
+                            $("#flight-sheet-name").val(data.name);
+                            $("#pool1-addr").val(data.pools[0].pool_addr1);
+                            $("#pool2-addr").val(data.pools[1].pool_addr2);
+                            $("#pool3-addr").val(data.pools[2].pool_addr3);
+                            $("#wallet").val(data.pools[3].wallet);
+                            $("#password").val(data.pools[4].password);
+                        });
+                    });
+
+                    // Застосування flight sheet до всіх
+                    $(".apply-flight-sheet-to-all").click(function() {
+                        let name = $(this).data("name");
+                        $.post("/apply_flight_sheet_to_all", {sheet_name: name}, function(response) {
+                            // Відображаємо повідомлення для кожного успішного IP
+                            response.success_ips.forEach(ip => {
+                                showNotification(`Flight sheet applied to worker: ${ip}`, 'success');
+                            });
+                        }).fail(function(response) {
+                            let message = response.responseJSON.message + "\nSuccess: " + response.responseJSON.success_ips.join(", ") + "\nFailed: " + response.responseJSON.failed_ips.join(", ");
+                            showNotification(message, 'error');
+                        });
+                    });
+                });
+            }
+
+            // Додавання нового flight sheet
+            $("#add-flight-sheet").click(function() {
+                let name = $("#flight-sheet-name").val();
+                let pools = [
+                    {"pool_addr1": $("#pool1-addr").val()},
+                    {"pool_addr2": $("#pool2-addr").val()},
+                    {"pool_addr3": $("#pool3-addr").val()},
+                    {"wallet": $("#wallet").val()},
+                    {"password": $("#password").val()}
+                ];
+                let flightSheet = {name: name, pools: pools};
+
+                $.ajax({
+                    url: '/add_flight_sheet',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(flightSheet),
+                    success: function() {
+                        $("#flight-sheet-form")[0].reset();
+                        fetchFlightSheets();
+                        showNotification(`Flight sheet ${name} added successfully`, 'success');
+                    },
+                    error: function() {
+                        showNotification('Error adding flight sheet', 'error');
+                    }
+                });
+            });
+
+            // Завантаження та оновлення списку
+            fetchFlightSheets();
+            setInterval(fetchFlightSheets, 10000);
+            updateLastUpdateTime();
+        });
+    </script>
+</head>
+<body>
+    {% include 'menu.html' %}
+    
+    <div class="container">
+        <div class="block">
+            <h2>Manage Flight Sheets</h2>
+            <ul class="list-group mt-3" id="flight-sheet-list"></ul>
+        </div>
+        <div class="block">
+            <h2>Create New Flight Sheet</h2>
+            <form id="flight-sheet-form">
+                <div class="form-group">
+                    <label for="flight-sheet-name">Flight Sheet Name</label>
+                    <input type="text" class="form-control" id="flight-sheet-name" placeholder="Enter flight sheet name">
+                </div>
+                <div class="form-group">
+                    <label for="pool1-addr">Pool Address 1</label>
+                    <input type="text" class="form-control" id="pool1-addr" placeholder="Enter pool address 1">
+                </div>
+                <div class="form-group">
+                    <label for="pool2-addr">Pool Address 2</label>
+                    <input type="text" class="form-control" id="pool2-addr" placeholder="Enter pool address 2">
+                </div>
+                <div class="form-group">
+                    <label for="pool3-addr">Pool Address 3</label>
+                    <input type="text" class="form-control" id="pool3-addr" placeholder="Enter pool address 3">
+                </div>
+                <div class="form-group">
+                    <label for="wallet">Wallet</label>
+                    <input type="text" class="form-control" id="wallet" placeholder="Enter wallet">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="text" class="form-control" id="password" placeholder="Enter password">
+                </div>
+                <button type="button" class="btn btn-primary" id="add-flight-sheet">Add Flight Sheet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Контейнер для спливаючих повідомлень -->
+    <div id="notification-container"></div>
+</body>
+</html>

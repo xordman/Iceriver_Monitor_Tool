@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Monitor - Log</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        .container {
+            margin-left: 200px;
+        }
+        .log-box {
+            max-height: 70vh;
+            overflow-y: scroll;
+            background-color: #f8f8f8;
+            padding: 10px;
+            border: 1px solid #ddd;
+            white-space: pre-wrap;
+        }
+        .btn-clear-log {
+            margin-left: 10px;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script>
+        function updateLastUpdateTime() {
+            const now = new Date();
+            const formattedTime = now.toLocaleString();
+            $("#last-update").text(`Last update: ${formattedTime}`);
+        }
+
+        $(document).ready(function(){
+            function fetchLog() {
+                $.getJSON("/log_content", function(data) {
+                    if (data.log_content) {
+                        let logs = data.log_content.split('\n').reverse().join('\n');
+                        $("#log-content").html(logs);
+                    } else {
+                        $("#log-content").html("Error fetching log content.");
+                    }
+                    updateLastUpdateTime();
+                }).fail(function() {
+                    $("#log-content").html("Error fetching log content.");
+                });
+            }
+
+            $("#clear-log").click(function() {
+                $.post("/clear_log", function() {
+                    fetchLog();
+                }).fail(function() {
+                    $("#log-content").html("Error clearing log.");
+                });
+            });
+
+            fetchLog();
+            setInterval(fetchLog, 10000);
+        });
+    </script>
+</head>
+<body>
+    {% include 'menu.html' %}
+    <div class="container">
+        <h1 class="mt-5">Worker Monitor - Log</h1>
+        <button class="btn btn-danger btn-clear-log" id="clear-log">Очистити лог</button>
+        <div class="log-box mt-3" id="log-content"></div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Detail</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <style>
+        .container {
+            margin-left: 200px;
+            margin-bottom: 50px; /* Відступ для нижнього блоку */
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+        }
+        .sidebar a {
+            color: #fff;
+            display: block;
+            padding: 10px 0;
+        }
+        .block {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            height: 100%;
+        }
+        .block.offline {
+            background-color: #f8d7da;
+        }
+        .small-font {
+            font-size: 0.85em;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            table-layout: fixed;
+            word-wrap: break-word;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        td.wrap {
+            white-space: normal;
+            word-break: break-all;
+        }
+        .footer-fixed {
+            position: fixed;
+            bottom: 0;
+            left: 200px;
+            width: calc(100% - 200px);
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #ddd;
+            text-align: center;
+        }
+        .bold {
+            font-weight: bold;
+        }
+        .btn-restart {
+            margin-top: 10px;
+        }
+        .row-equal-height {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .col-md-6 {
+            display: flex;
+            flex-direction: column;
+        }
+        .status-online {
+            color: green;
+        }
+        .status-offline {
+            color: red;
+        }
+    </style>
+    <script>
+        $(document).ready(function(){
+            let ip = "{{ ip }}";
+
+            function updateLastUpdateTime() {
+                const now = new Date();
+                const formattedTime = now.toLocaleString();
+                $("#update-time").text(formattedTime);
+            }
+
+            function updateBlockStatus(status) {
+                if (status === "offline") {
+                    $(".block").addClass("offline");
+                } else {
+                    $(".block").removeClass("offline");
+                }
+            }
+
+            function fetchWorkerDetail() {
+                $.getJSON(`/worker_data/${ip}`, function(data) {
+                    if (!$.isEmptyObject(data)) {
+                        let onlineStatus = data.status === "online" ? "online" : "offline";
+                        updateBlockStatus(onlineStatus);
+                        $("#worker-ip").text(ip);
+                        $("#worker-runtime").text(data.boardpow ? data.boardpow.ret.runtime : 'N/A');
+                        $("#worker-status").text(onlineStatus).attr('class', onlineStatus === "online" ? 'status-online' : 'status-offline');
+                        $("#worker-hashrate").text(data.boardpow ? data.boardpow.ret.rtpow : 'N/A');
+                        $("#worker-realtime-hashrate").text(data.boardpow ? data.boardpow.ret.avgpow : 'N/A');
+
+                        let board = data.board ? data.board.ret.boards[0] : {};
+                        $("#board-chipsuc").text(board.chipsuc || 'N/A');
+                        $("#board-intmp").text(board.intmp || 'N/A');
+                        $("#board-outtmp").text(board.outtmp || 'N/A');
+                        $("#fan-speeds").text(data.fan ? data.fan.ret.fans.join(', ') : 'N/A');
+
+                        let chipTemps = data.getchipinfo ? data.getchipinfo.ret.chips.filter(chip => chip.no <= 12 && chip.temp > 0) : [];
+                        let chipRows = chipTemps.map(chip => {
+                            let tempColor = getColorForTemp(chip.temp);
+                            let voltageColor = getColorForVoltage(chip.voltage);
+                            return `
+                                <tr>
+                                    <td>${chip.no}</td>
+                                    <td class="${tempColor}">${chip.temp.toFixed(2)} °C</td>
+                                    <td class="${voltageColor}">${chip.voltage.toFixed(6)} V</td>
+                                    <td>${chip.pll}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                        $("#chip-info tbody").html(chipRows);
+
+                        let poolRows = data.getpool ? data.getpool.ret.pools.map(pool => `
+                            <tr class="small-font">
+                                <td>${pool.no}</td>
+                                <td class="wrap">${pool.addr}</td>
+                                <td class="wrap">${pool.user}</td>
+                                <td>${pool.pass}</td>
+                                <td>${pool.diff}</td>
+                                <td>${pool.accepted}</td>
+                                <td>${pool.rejected}</td>
+                                <td class="${pool.state ? 'text-success' : 'text-danger'}">${pool.state ? "Connected" : "Disconnected"}</td>
+                            </tr>
+                        `).join('') : 'N/A';
+                        $("#pool-info tbody").html(poolRows);
+
+                        $("#version-info").html(`<span class="bold">Version:</span> ${data.info.ret.firmver1}, ${data.info.ret.firmver2}, ${data.info.ret.softver1} <span class="bold">IP:</span> ${data.getnet.ret.ip} <span class="bold">MAC:</span> ${data.getnet.ret.mac}`);
+
+                        updateLastUpdateTime();
+                    }
+                }).fail(function() {
+                    updateBlockStatus("offline");
+                    $("#worker-status").text("offline").attr('class', 'status-offline');
+                });
+            }
+
+            function fetchFlightSheets() {
+                $.getJSON("/flight_sheets", function(data) {
+                    $("#flight-sheet-select").empty();
+                    $("#flight-sheet-select").append(`<option value="">Select Flight Sheet</option>`);
+                    $.each(data, function(index, sheet) {
+                        $("#flight-sheet-select").append(`<option value="${sheet.name}">${sheet.name}</option>`);
+                    });
+                });
+            }
+
+            $("#apply-flight-sheet").click(function() {
+                let sheetName = $("#flight-sheet-select").val();
+                if (sheetName) {
+                    $.post("/apply_flight_sheet", {sheet_name: sheetName, ip: ip}, function(response) {
+                        alert(response.message);
+                    });
+                } else {
+                    alert("Please select a flight sheet.");
+                }
+            });
+
+            $("#restart-worker").click(function() {
+                $.post("/restart_worker", {ip: ip}, function(response) {
+                    alert(response.message);
+                });
+            });
+
+            fetchWorkerDetail();
+            setInterval(fetchWorkerDetail, 10000);
+            fetchFlightSheets();
+        });
+
+        function getColorForTemp(temp) {
+            if (temp > 95) {
+                return 'text-danger';
+            } else if (temp > 90) {
+                return 'text-warning';
+            } else {
+                return 'text-success';
+            }
+        }
+
+        function getColorForVoltage(voltage) {
+            if (0.46 <= voltage && 0.5 >= voltage) {
+                return 'text-success';
+            } else {
+                return 'text-danger';
+            }
+        }
+    </script>
+</head>
+<body>
+    {% include 'menu.html' %}
+    <div class="container">
+        <h1 class="mt-5">Worker Monitor - Detail</h1>
+        <div class="row row-equal-height">
+            <div class="col-md-6">
+                <div class="block">
+                    <h4>Chip Info:</h4>
+                    <table class="table table-striped table-responsive" id="chip-info">
+                        <thead>
+                            <tr>
+                                <th>Chip No</th>
+                                <th>Temperature</th>
+                                <th>Voltage</th>
+                                <th>Frequency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="block">
+                    <h3>Worker IP: <span id="worker-ip"></span></h3>
+                    <p>Runtime: <span id="worker-runtime"></span></p>
+                    <p>Status: <span id="worker-status"></span></p>
+                    <p>Hashrate: <span id="worker-hashrate"></span></p>
+                    <p>Real-time Hashrate: <span id="worker-realtime-hashrate"></span></p>
+                    <p>Chips Used: <span id="board-chipsuc"></span></p>
+                    <p>In Temp: <span id="board-intmp"></span></p>
+                    <p>Out Temp: <span id="board-outtmp"></span></p>
+                    <p>Fan Speeds: <span id="fan-speeds"></span></p>
+                    <button class="btn btn-primary btn-restart" id="restart-worker">Restart Worker</button>
+                </div>
+            </div>
+        </div>
+        <div class="block">
+            <h4>Pool Info:</h4>
+            <table class="table table-striped table-responsive" id="pool-info">
+                <thead>
+                    <tr>
+                        <th>Pool No</th>
+                        <th>Address</th>
+                        <th>User</th>
+                        <th>Pass</th>
+                        <th>Difficulty</th>
+                        <th>Accepted</th>
+                        <th>Rejected</th>
+                        <th>State</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+        <div class="block">
+            <label for="flight-sheet-select">Select Flight Sheet:</label>
+            <select class="form-control" id="flight-sheet-select"></select>
+            <button class="btn btn-primary mt-2" id="apply-flight-sheet">Apply Flight Sheet</button>
+        </div>
+    </div>
+    <div class="footer-fixed" id="version-info">
+        <span class="bold">Version:</span> N/A <span class="bold">IP:</span> N/A <span class="bold">MAC:</span> N/A
+    </div>
+</body>
+</html>

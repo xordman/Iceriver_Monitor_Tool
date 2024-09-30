@@ -1,0 +1,22 @@
+[
+    {
+        "name": "k1pool",
+        "pools": [
+            {
+                "pool_addr1": "stratum+ssl://eu.kheavyhash.k1pool.com:5500"
+            },
+            {
+                "pool_addr2": "stratum+ssl://us.kheavyhash.k1pool.com:5500"
+            },
+            {
+                "pool_addr3": "stratum+ssl://cn.kheavyhash.k1pool.com:5500"
+            },
+            {
+                "wallet": "KrHmtVNHP8yeanomZZxMDZPcZ7NYQcFVnvz"
+            },
+            {
+                "password": "x"
+            }
+        ]
+    }
+]
