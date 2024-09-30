@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Monitor</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        .container {
+            margin-left: 200px;
+        }
+        .main-block {
+            display: flex;
+            flex-direction: column; /* Встановлюємо вертикальне розташування блоків 1 і 2 */
+        }
+        .block {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .block-flex {
+            display: flex;
+            justify-content: space-between; /* Вирівнюємо блоки 1.1 і 1.2 по горизонталі */
+            align-items: center;
+        }
+        .worker-box {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+        }
+        .worker-box.online {
+            background-color: #d4edda;
+        }
+        .worker-box.offline {
+            background-color: #f8d7da;
+        }
+        .worker-box .header {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .worker-box .detail {
+            margin-bottom: 5px;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .col-md-3 {
+            flex: 1;
+            max-width: 25%;
+            box-sizing: border-box;
+            padding: 15px;
+        }
+        .title-container {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .fan-info-block {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-left: 20px;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .fan-row {
+            display: flex;
+            flex-wrap: wrap; /* Дозволяє переносити блоки на наступний рядок при нестачі місця */
+            justify-content: flex-start; /* Розміщення елементів зліва направо */
+            align-items: center; /* Вертикальне вирівнювання елементів */
+            gap: 10px; /* Відступи між блоками */
+        }
+        .temp-block {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: row;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .fan-block {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            width: 100px;
+        }
+        .fan-icon {
+            width: auto;
+            height: 1em; /* Висота зображення кулера */
+            object-fit: contain;
+        }
+        .temp-icon {
+            width: 1em;
+            height: auto; /* Висота зображення температури */
+            object-fit: contain;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            // Функція для завантаження даних воркерів
+            function fetchWorkerData() {
+                $.getJSON("/temperatures", function(data) {
+                    $("#worker-container").empty();
+                    $.each(data, function(ip, info) {
+                        let statusClass = info.status === "online" ? "online" : "offline";
+                        let maxTemp = info.getchipinfo ? Math.max(...info.getchipinfo.ret.chips.map(chip => chip.temp)) : 'N/A';
+                        let boardPow = info.boardpow ? info.boardpow.ret.rtpow : 'N/A';
+                        let runtime = info.boardpow ? info.boardpow.ret.runtime : 'N/A';
+                        let statusText = info.status === "online" ? 'Online' : 'Offline';
+
+                        $("#worker-container").append(
+                            `<div class="col-md-3">
+                                <div class="worker-box ${statusClass}" data-ip="${ip}">
+                                    <div class="header">Worker IP: ${ip}</div>
+                                    <div class="detail">Status: ${statusText}</div>
+                                    <div class="detail">Runtime: ${runtime}</div>
+                                    <div class="detail">Hashrate: ${boardPow}</div>
+                                    <div class="detail">Chip Temp(MAX): ${maxTemp !== 'N/A' ? maxTemp.toFixed(2) : 'N/A'} °C</div>
+                                </div>
+                            </div>`
+                        );
+                    });
+
+                    $(".worker-box").click(function() {
+                        let ip = $(this).data("ip");
+                        window.location.href = `/worker/${ip}`;
+                    });
+
+                    updateLastUpdateTime();
+                });
+            }
+
+            // Функція для отримання даних з бекенду
+            async function fetchFanData() {
+                const response = await fetch('/api/fan_data');
+                return await response.json();
+            }
+
+            // Функція для оновлення блоку з інформацією про кулери
+            async function updateFanInfoBlock() {
+                const data = await fetchFanData();
+                const fanContainer = document.getElementById('fan-container');
+                const tempContainer = document.getElementById('temp-container');
+
+                fanContainer.innerHTML = '';
+                tempContainer.innerHTML = '';
+
+                if (data.casefan) {
+                    data.casefan.forEach((speed, index) => {
+                        const fanBlock = document.createElement('div');
+                        fanBlock.classList.add('fan-block');
+                        fanBlock.innerHTML = `
+                            <div>
+                                <img src="data:image/svg+xml;base64,PHN2ZyBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDAgMCA4OS40NzEgODkuNDcxIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDg5LjQ3MSA4OS40NzEiIHdpZHRoPSI1MTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0iIzIyOGZkNyI+PHBhdGggZD0ibTU3LjMwNSAzOC4wMTVjNS40MzMtMi4zMTIgMTIuNTE1LTMuNzIyIDIyLjg5Ny0zLjQyOS00Ljk3MS02LjMyLTkuNDE2LTEwLjkzMy0xMi4wNzktMTUuNTY4LTcuMzYyIDQuMjQ1LTEyLjc1NSA4LjYzOS0xNi43NzEgMTMuMDkxLTEuODUtLjk3LTMuOTE5LTEuNTY4LTYuMTMxLTEuNjQzLjY5MS01LjgxNiAyLjk3NC0xMi42MyA4LjQ2LTIxLjUyNy01Ljk2NiAwLTExLjkyOCAwLTE3Ljg5NCAwLTEuMjQ5IDEwLjU4My0uNDMzIDE3LjkzNCAxLjM1MyAyMy42OTYtMS44NDMgMS4xNTYtMy4zODkgMi43MjQtNC41NDIgNC41NzQtNC42ODUtMy40MTEtOS40MjMtOC4yMDYtMTQuMzE5LTE0Ljk3LTIuNDU1IDUuNDgzLTQuODkyIDkuMTY5LTkuMDE1IDEyLjMzMyA4LjQ4NSA2LjMzNSAxNS4yOTIgOS4zNTkgMjEuMjA4IDEwLjcxNS4wODkgMi4yMy42OTggNC4yOTggMS42ODkgNi4xNTItNS40MzMgMi4zMTItMTIuNTE1IDMuNzE4LTIyLjg5NyAzLjQyNSA0Ljk2NyA2LjMyIDkuNDEyIDEwLjkzMyAxMi4wODIgMTUuNTY4IDcuMzU1LTQuMjQ1IDEyLjc1MS04LjYzMiAxNi43NjMtMTMuMDg0IDEuODUuOTcgMy45MTkgMS41NjggNi4xMzggMS42NDMtLjY5MSA1LjgxNi0yLjk3NCAxMi42My04LjQ2IDIxLjUyN2gxNy44OTRjMS4yNTMtMTAuNTgzLjQzMy0xNy45MzQtMS4zNTYtMjMuNjk2IDEuODQ3LTEuMTU2IDMuMzg5LTIuNzI0IDQuNTQ1LTQuNTc0IDQuNjg4IDMuNDA3IDkuNDMgOC4yMDYgMTQuMzIzIDE0Ljk2IDIuNDU1LTUuNDc5IDQuODg5LTkuMTY5IDkuMDE1LTEyLjMyOS04LjQ4NS02LjMzNS0xNS4yODktOS4zNTUtMjEuMjEyLTEwLjcxNS0uMDkyLTIuMjIzLS43LTQuMjkyLTEuNjkxLTYuMTQ5em0tMTIuNTY5IDExLjE5NGMtMi40NjkgMC00LjQ3NC0yLjAwOC00LjQ3NC00LjQ3NHMyLjAwNC00LjQ3NCA0LjQ3NC00LjQ3NGMyLjQ2NiAwIDQuNDc0IDIuMDA4IDQuNDc0IDQuNDc0LS4wMDEgMi40NjYtMi4wMDkgNC40NzQtNC40NzQgNC40NzR6Ii8+PHBhdGggZD0ibTgyLjMxNCAwaC03NS4xNTZjLTMuOTM3IDAtNy4xNTggMy4yMjEtNy4xNTggNy4xNTh2NzUuMTU2YzAgMy45MzcgMy4yMjEgNy4xNTggNy4xNTggNy4xNThoNzUuMTU2YzMuOTM3IDAgNy4xNTgtMy4yMjEgNy4xNTgtNy4xNTh2LTc1LjE1NmMtLjAwMS0zLjkzNy0zLjIyMi03LjE1OC03LjE1OC03LjE1OHptLTc2LjA1MSAzLjU3OWMxLjQ4NSAwIDIuNjg0IDEuMTk5IDIuNjg0IDIuNjg0cy0xLjE5OSAyLjY4NC0yLjY4NCAyLjY4NC0yLjY4NC0xLjE5OS0yLjY4NC0yLjY4NCAxLjE5OS0yLjY4NCAyLjY4NC0yLjY4NHptMCA4Mi4zMTNjLTEuNDg1IDAtMi42ODQtMS4xOTktMi42ODQtMi42ODRzMS4xOTktMi42ODQgMi42ODQtMi42ODQgMi42ODQgMS4xOTkgMi42ODQgMi42ODRjMCAxLjQ4Ni0xLjE5OSAyLjY4NC0yLjY4NCAyLjY4NHptMzguNDczLTEuNzg5Yy0yMS43MjQgMC0zOS4zNjctMTcuNjEyLTM5LjM2Ny0zOS4zNjdzMTcuNjQzLTM5LjM2OCAzOS4zNjctMzkuMzY4IDM5LjM2NyAxNy42MTIgMzkuMzY3IDM5LjM2OC0xNy42NDQgMzkuMzY3LTM5LjM2NyAzOS4zNjd6bTM4LjQ3MiAxLjc4OWMtMS40ODUgMC0yLjY4NC0xLjE5OS0yLjY4NC0yLjY4NHMxLjE5OS0yLjY4NCAyLjY4NC0yLjY4NCAyLjY4NCAxLjE5OSAyLjY4NCAyLjY4NGMwIDEuNDg2LTEuMTk4IDIuNjg0LTIuNjg0IDIuNjg0em0wLTc2Ljk0NWMtMS40ODUgMC0yLjY4NC0xLjE5OS0yLjY4NC0yLjY4NHMxLjE5OS0yLjY4NCAyLjY4NC0yLjY4NCAyLjY4NCAxLjE5OSAyLjY4NCAyLjY4NC0xLjE5OCAyLjY4NC0yLjY4NCAyLjY4NHoiLz48L2c+PC9zdmc+" class="fan-icon" alt="Fan Icon">
+                                <span class="fan-speed">${speed}%</span>
+                            </div>
+                        `;
+                        fanContainer.appendChild(fanBlock);
+                    });
+                }
+
+                // Оновлення блоків температури
+                if (data.thermosensors) {
+                    data.thermosensors.forEach((temp, index) => {
+                        const tempBlock = document.createElement('div');
+                        tempBlock.classList.add('fan-block');
+                        tempBlock.innerHTML = `
+                            <div>
+                                <img src="data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjEwMiIgdmlld0JveD0iMCAwIDkzIDEwMiIgd2lkdGg9IjkzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxnIHN0eWxlPSJzdHJva2U6Izg5YzU0MDtzdHJva2Utd2lkdGg6Ni4wMDg5NDk7ZmlsbDpub25lO2ZpbGwtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lY2FwOnJvdW5kO3N0cm9rZS1saW5lam9pbjpiZXZlbCIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNC40MTg1MDggMS4zMTgzNzYpIj48cGF0aCBkPSJtMi42NTQ0ODAzNCAyNy40NDgxNzc4IDM5Ljc2MzA2OTg2IDIzLjMzNDY0MjciLz48cGF0aCBkPSJtMi4yMzU5Mjk3NiA0Mi4wOTc3MjY2IDE4LjgzNTY1MDE0LTMuODQxNjEzNi01LjQ0MTgxMzEtMTcuNTA0ODc1NiIvPjxwYXRoIGQ9Im04Mi4xODA2MjAxIDI3LjQ0ODE3NzgtMzkuNzYzMDY5OSAyMy4zMzQ2NDI3Ii8+PHBhdGggZD0ibTgyLjU5OTE3MDYgNDIuMDk3NzI2Ni0xOC44MzU2NTAxLTMuODQxNjEzNiA1LjQ0MTgxMzEtMTcuNTA0ODc1NiIvPjxwYXRoIGQ9Im04Mi4xODA2MjAxIDc0LjExNzQ2MzMtMzkuNzYzMDY5OS0yMy4zMzQ2NDI4Ii8+PHBhdGggZD0ibTgyLjU5OTE3MDYgNTkuNDY3OTE0NC0xOC44MzU2NTAxIDMuODQxNjEzNyA1LjQ0MTgxMzEgMTcuNTA0ODc1NiIvPjxwYXRoIGQ9Im0yLjY1NDQ4MDM0IDc0LjExNzQ2MzMgMzkuNzYzMDY5ODYtMjMuMzM0NjQyOCIvPjxwYXRoIGQ9Im0yLjIzNTkyOTc2IDU5LjQ2NzkxNDQgMTguODM1NjUwMTQgMy44NDE2MTM3LTUuNDQxODEzMSAxNy41MDQ4NzU2Ii8+PHBhdGggZD0ibTQyLjc0NDM4MjQgOTYuODg1OTc1Ny0uMzI2NjY4My00Ni4xMDMxNDk3Ii8+PHBhdGggZD0ibTI5Ljg0ODI1MDEgODkuOTIzNjgwMiAxMi43NDQ3NjE0LTE0LjM5MTM0NDQgMTIuNDM4NzQyIDEzLjQ2NTE4NTEiLz48cGF0aCBkPSJtNDIuNzQ0MzgyNCA0LjY3OTY2NTM0LS4zMjY2NjgzIDQ2LjEwMzE0OTc2Ii8+PHBhdGggZD0ibTI5Ljg0ODI1MDEgMTEuNjQxOTY2NCAxMi43NDQ3NjE0IDE0LjM5MTM0NDMgMTIuNDM4NzQyLTEzLjQ2NTE4NTEiLz48L2c+PC9zdmc+" class="temp-icon" alt="Temperature Icon">
+                                <span class="temp-value">${temp}°C</span>
+                            </div>
+                        `;
+                        tempContainer.appendChild(tempBlock);
+                    });
+                }
+            }
+
+            // Оновлення блоку з інформацією про кулери кожні 10 секунд
+            setInterval(updateFanInfoBlock, 10000);
+            
+            // Початкове завантаження даних
+            fetchWorkerData();
+            updateFanInfoBlock();
+            setInterval(fetchWorkerData, 10000);
+        });
+    </script>
+</head>
+<body>
+    {% include 'menu.html' %}
+    <div class="container">
+        <!-- Блок 0 -->
+        <div class="main-block">
+            <!-- Блок 1 -->
+            <div class="block-flex">
+                <!-- Блок 1.1 -->
+                <div class="title-container">
+                    <h1>Worker Monitor</h1>
+                </div>
+                <!-- Блок 1.2 -->
+                <div class="block" id="dynamic-block">
+                    <!-- Блок 2.1 - для кулерів -->
+                    <div id="fan-container" class="fan-row"></div>
+                    <!-- Блок 2.2 - для температури -->
+                    <div id="temp-container" class="temp-block"></div>
+                </div>
+            </div>
+            <!-- Блок 2 -->
+            <div id="worker-container" class="row mt-5">
+                <!-- Worker boxes will be appended here -->
+            </div>
+        </div>
+    </div>
+</body>
+</html>

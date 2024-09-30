@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Fans Control</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+        <style>
+            .container {
+                margin-left: 200px;
+            }
+            .main-block {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+            }
+            .block {
+                margin-bottom: 20px;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                background-color: #f9f9f9;
+                width: 100%;
+            }
+            .block-hidden {
+                display: none; /* Прихований блок, який стане видимим при наявності даних */
+                width: 50%;
+                height: auto;
+            }
+            .block label {
+                min-width: 140px;
+            }
+            .sub-block {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+            .form-control {
+                width: 100px; /* Зменшена ширина полів для вводу */
+            }
+            .button-group {
+                display: flex;
+                justify-content: flex-start;
+                gap: 10px; /* Відступ між кнопками */
+            }
+            .switch {
+                position: relative;
+                display: inline-block;
+                width: 60px; /* Фіксована ширина слайдера */
+                height: 34px;
+            }
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #ccc;
+                transition: .4s;
+                border-radius: 34px;
+                width: 60px; /* Фіксована ширина слайдера */
+            }
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 26px;
+                width: 26px;
+                left: 4px;
+                bottom: 4px;
+                background-color: white;
+                transition: .4s;
+                border-radius: 50%;
+            }
+            .settings-block {
+                display: flex;
+                flex-direction: column; /* Вертикальне розташування елементів */
+                align-items: flex-start; /* Вирівнювання елементів по лівому краю */
+            }
+    
+            .message-block {
+                margin-top: 10px; /* Відступ зверху */
+                color: green; /* Колір тексту для успішного повідомлення */
+                white-space: nowrap; /* Виведення в один рядок без переносу */
+                text-align: left; /* Вирівнювання тексту ліворуч */
+                display: none; /* Спочатку прихований */
+            }
+    
+            input:checked + .slider {
+                background-color: #2196F3;
+            }
+            input:checked + .slider:before {
+                transform: translateX(26px);
+            }
+            .block-flex {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .block-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin-top: 20px;
+            }
+            .fan-row {
+                display: flex;
+                flex-wrap: wrap; /* Дозволяє переносити блоки на наступний рядок при нестачі місця */
+                justify-content: flex-start; /* Розміщення елементів зліва направо */
+                align-items: center; /* Вертикальне вирівнювання елементів */
+                gap: 10px; /* Відступи між блоками */
+            }
+            .temp-row {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+                align-items: center;
+                gap: 10px;
+            }
+            .fan-block, .temp-block {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column; /* Вертикальне розташування елементів всередині блоку */
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                background-color: #f9f9f9;
+                width: 100px; /* Фіксована ширина кожного блоку */
+            }
+            .fan-icon, .temp-icon {
+                width: auto;
+                height: 2em; /* Висота пропорційно до розміру шрифту */
+                margin-right: 10px;
+                object-fit: contain;
+            }
+            .fan-speed, .temp-value {
+                font-size: 1.5em; /* Збільшений шрифт */
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        {% include 'menu.html' %}
+        <div id="notification-container" style="position: fixed; top: 10px; right: 10px; z-index: 9999; max-width: 300px;"></div>
+        <div class="container">
+            <h1 class="mt-5">Fans Control</h1>
+            
+            <div class="main-block">
+                <div class="block">
+                    <h4>Donnager Autofan</h4>
+                    <div class="block-flex">
+                        <div class="sub-block">
+                            <div>
+                                <label for="manual-fan-speed">Manual Fan Speed:</label>
+                                <input type="number" class="form-control" id="manual-fan-speed" min="0" max="100" value="10">
+                                <span>%</span>
+                            </div>
+                            <div>
+                                <label class="switch">
+                                    <input type="checkbox" id="autofan-switch">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="sub-block settings-block">
+                            <h5>Advanced Settings</h5>
+                            <button class="btn btn-warning" id="recalibrate-btn">Recalibrate</button>
+                            <div id="calibration-message" class="message-block">Start Fan Calibration, PWM=100%</div>
+                        </div>             
+                    </div>
+                    <div class="block">
+                        <div class="sub-block">
+                            <label for="min-fan-speed">Min Fan Speed:</label>
+                            <input type="number" class="form-control" id="min-fan-speed" min="0" max="100" value="5">
+                            <span>%</span>
+                        </div>
+                        <div class="sub-block">
+                            <label for="max-fan-speed">Max Fan Speed:</label>
+                            <input type="number" class="form-control" id="max-fan-speed" min="0" max="100" value="50">
+                            <span>%</span>
+                        </div>
+                    </div>
+                    <div class="block">
+                        <div class="sub-block">
+                            <label for="in-temp">Target In Temp:</label>
+                            <input type="number" class="form-control" id="in-temp" min="0" value="80">
+                            <span>°C</span>
+                        </div>
+                        <div class="sub-block">
+                            <label for="chip-temp-max">Target Chip Temp (MAX):</label>
+                            <input type="number" class="form-control" id="chip-temp-max" min="0" value="90">
+                            <span>°C</span>
+                        </div>
+                    </div>
+                    <div class="block">
+                        <div class="button-group">
+                            <button class="btn btn-primary" id="apply-btn">Apply</button>
+                            <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="block" id="dynamic-block">
+                    <div id="fan-container" class="fan-row"></div>
+                    <div id="temp-container" class="temp-row"></div>
+                </div>
+                <div class="block">
+                    <h4>Control Board Fans for All Workers</h4>
+                    <div class="sub-block">
+                        <label for="board-fan-speed">Fan Speed (%):</label>
+                        <input type="number" class="form-control" id="board-fan-speed" min="0" max="100" value="50">
+                    </div>
+                    <div class="sub-block">
+                        <label for="board-fan-mode">Fan Mode:</label>
+                        <select class="form-control" id="board-fan-mode">
+                            <option value="normal">Normal</option>
+                            <option value="sleep">Sleep</option>
+                        </select>
+                    </div>
+                    <div class="sub-block">
+                        <label for="fan-control-switch">Fan Control:</label>
+                        <input type="checkbox" id="fan-control-switch">
+                        <span>Enable/Disable Fan Speed Control</span>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="apply-board-fan-btn">Apply to All Workers</button>
+                    </div>
+                    <div id="apply-board-fan-message" class="message-block">Settings applied successfully!</div>
+                </div>
+                
+            </div>
+        </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script>
+        // Функція для завантаження конфігурації з сервера
+        function loadConfig() {
+            $.getJSON('/config', function(data) {
+                $('#manual-fan-speed').val(data.MANUAL_FAN);
+                $('#autofan-switch').prop('checked', data.AUTO_ENABLED == 1);
+                $('#min-fan-speed').val(data.MIN_FAN);
+                $('#max-fan-speed').val(data.MAX_FAN);
+                $('#in-temp').val(data.TARGET_TEMP);
+                $('#chip-temp-max').val(data.TARGET_MEM_TEMP);
+            });
+        }
+
+        // Функція для збереження конфігурації
+        function saveConfig() {
+            var config = {
+                AUTO_ENABLED: $('#autofan-switch').is(':checked') ? 1 : 0,
+                MANUAL_FAN: $('#manual-fan-speed').val(),
+                MIN_FAN: $('#min-fan-speed').val(),
+                MAX_FAN: $('#max-fan-speed').val(),
+                TARGET_TEMP: $('#in-temp').val(),
+                TARGET_MEM_TEMP: $('#chip-temp-max').val()
+            };
+            $.post('/update_config', config, function(response) {
+                alert(response.message);
+            });
+        }
+
+        // Функція для відображення повідомлення про калібрування
+        function showCalibrationMessage(message) {
+            const messageBlock = document.getElementById('calibration-message');
+            messageBlock.innerText = message;
+            messageBlock.style.display = 'block';
+            setTimeout(() => {
+                messageBlock.style.display = 'none';
+            }, 5000);
+        }
+
+        // Функція для створення і відображення повідомлень
+        function showNotification(message, type = 'success', duration = 5000) {
+            const notificationContainer = document.getElementById('notification-container');
+            
+            // Створюємо новий елемент для повідомлення
+            const notification = document.createElement('div');
+            notification.classList.add('notification', type);  // Додаємо клас типу повідомлення
+            notification.innerText = message;
+
+            // Стиль для кожного повідомлення
+            notification.style.padding = '10px';
+            notification.style.marginBottom = '10px';
+            notification.style.borderRadius = '5px';
+            notification.style.backgroundColor = (type === 'success') ? '#4caf50' : '#f44336'; // Зелений для успіху, червоний для помилки
+            notification.style.color = 'white';
+            notification.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+            notification.style.opacity = '1';
+            notification.style.transition = 'opacity 0.5s ease';
+
+            // Додаємо нове повідомлення у контейнер
+            notificationContainer.appendChild(notification);
+
+            // Таймер для автоматичного зникнення повідомлення
+            setTimeout(() => {
+                notification.style.opacity = '0'; // Початок анімації зникнення
+                setTimeout(() => {
+                    notification.remove(); // Видалення з DOM після анімації
+                }, 500);
+            }, duration);
+        }
+
+        // Обробник для кнопки "Apply to All Workers"
+        document.getElementById('apply-board-fan-btn').addEventListener('click', function() {
+            const fanSpeed = document.getElementById('board-fan-speed').value;
+            const fanMode = document.getElementById('board-fan-mode').value;
+            const fanControl = document.getElementById('fan-control-switch').checked;
+
+            const config = {
+                "ratio": fanSpeed,
+                "mode": fanMode,
+                "control": fanControl
+            };
+
+            fetch('/apply_fan_settings_to_all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    data.success_ips.forEach(ip => {
+                        showNotification(`Worker ${ip}: Fan settings applied successfully`, 'success');
+                    });
+                } else {
+                    data.failed_ips.forEach(ip => {
+                        showNotification(`Worker ${ip}: Error applying fan settings`, 'error');
+                    });
+                    if (data.errors) {
+                        data.errors.forEach(error => {
+                            showNotification(error, 'error');
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error sending fan settings', 'error');
+            });
+        });
+        
+       
+        // Обробник натискання кнопки Recalibrate
+        document.getElementById('recalibrate-btn').addEventListener('click', async function() {
+            try {
+                const response = await fetch('/api/recalibrate', { method: 'POST' });
+                const result = await response.text();
+                if (response.ok) {
+                    showCalibrationMessage(result);
+                } else {
+                    showCalibrationMessage('Error: Could not start fan calibration');
+                }
+            } catch (error) {
+                showCalibrationMessage('Error: Could not start fan calibration');
+            }
+        });
+
+        // Функція для отримання даних з бекенду
+        async function fetchFanData() {
+            const response = await fetch('/api/fan_data');
+            return await response.json();
+        }
+
+        // Функція для оновлення блоків кулерів і температури
+        async function updateBlocks() {
+            const data = await fetchFanData();
+            console.log("Received data:", data);
+    
+            // Оновлення блоків кулерів
+            const fanContainer = document.getElementById('fan-container');
+            fanContainer.innerHTML = ''; // Очищення контейнера
+            if (data.casefan) {
+                data.casefan.forEach((speed, index) => {
+                    const fanBlock = document.createElement('div');
+                    fanBlock.classList.add('fan-block');
+                    fanBlock.innerHTML = `
+                        <div>
+                            <img src="data:image/svg+xml;base64,PHN2ZyBlbmFibGUtYmFja2dyb3VuZD0ibmV3IDAgMCA4OS40NzEgODkuNDcxIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDg5LjQ3MSA4OS40NzEiIHdpZHRoPSI1MTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0iIzIyOGZkNyI+PHBhdGggZD0ibTU3LjMwNSAzOC4wMTVjNS40MzMtMi4zMTIgMTIuNTE1LTMuNzIyIDIyLjg5Ny0zLjQyOS00Ljk3MS02LjMyLTkuNDE2LTEwLjkzMy0xMi4wNzktMTUuNTY4LTcuMzYyIDQuMjQ1LTEyLjc1NSA4LjYzOS0xNi43NzEgMTMuMDkxLTEuODUtLjk3LTMuOTE5LTEuNTY4LTYuMTMxLTEuNjQzLjY5MS01LjgxNiAyLjk3NC0xMi42MyA4LjQ2LTIxLjUyNy01Ljk2NiAwLTExLjkyOCAwLTE3Ljg5NCAwLTEuMjQ5IDEwLjU4My0uNDMzIDE3LjkzNCAxLjM1MyAyMy42OTYtMS44NDMgMS4xNTYtMy4zODkgMi43MjQtNC41NDIgNC41NzQtNC42ODUtMy40MTEtOS40MjMtOC4yMDYtMTQuMzE5LTE0Ljk3LTIuNDU1IDUuNDgzLTQuODkyIDkuMTY5LTkuMDE1IDEyLjMzMyA4LjQ4NSA2LjMzNSAxNS4yOTIgOS4zNTkgMjEuMjA4IDEwLjcxNS4wODkgMi4yMy42OTggNC4yOTggMS42ODkgNi4xNTItNS40MzMgMi4zMTItMTIuNTE1IDMuNzE4LTIyLjg5NyAzLjQyNSA0Ljk2NyA2LjMyIDkuNDEyIDEwLjkzMyAxMi4wODIgMTUuNTY4IDcuMzU1LTQuMjQ1IDEyLjc1MS04LjYzMiAxNi43NjMtMTMuMDg0IDEuODUuOTcgMy45MTkgMS41NjggNi4xMzggMS42NDMtLjY5MSA1LjgxNi0yLjk3NCAxMi42My04LjQ2IDIxLjUyN2gxNy44OTRjMS4yNTMtMTAuNTgzLjQzMy0xNy45MzQtMS4zNTYtMjMuNjk2IDEuODQ3LTEuMTU2IDMuMzg5LTIuNzI0IDQuNTQ1LTQuNTc0IDQuNjg4IDMuNDA3IDkuNDMgOC4yMDYgMTQuMzIzIDE0Ljk2IDIuNDU1LTUuNDc5IDQuODg5LTkuMTY5IDkuMDE1LTEyLjMyOS04LjQ4NS02LjMzNS0xNS4yODktOS4zNTUtMjEuMjEyLTEwLjcxNS0uMDkyLTIuMjIzLS43LTQuMjkyLTEuNjkxLTYuMTQ5em0tMTIuNTY5IDExLjE5NGMtMi40NjkgMC00LjQ3NC0yLjAwOC00LjQ3NC00LjQ3NHMyLjAwNC00LjQ3NCA0LjQ3NC00LjQ3NGMyLjQ2NiAwIDQuNDc0IDIuMDA4IDQuNDc0IDQuNDc0LS4wMDEgMi40NjYtMi4wMDkgNC40NzQtNC40NzQgNC40NzR6Ii8+PHBhdGggZD0ibTgyLjMxNCAwaC03NS4xNTZjLTMuOTM3IDAtNy4xNTggMy4yMjEtNy4xNTggNy4xNTh2NzUuMTU2YzAgMy45MzcgMy4yMjEgNy4xNTggNy4xNTggNy4xNThoNzUuMTU2YzMuOTM3IDAgNy4xNTgtMy4yMjEgNy4xNTgtNy4xNTh2LTc1LjE1NmMtLjAwMS0zLjkzNy0zLjIyMi03LjE1OC03LjE1OC03LjE1OHptLTc2LjA1MSAzLjU3OWMxLjQ4NSAwIDIuNjg0IDEuMTk5IDIuNjg0IDIuNjg0cy0xLjE5OSAyLjY4NC0yLjY4NCAyLjY4NC0yLjY4NC0xLjE5OS0yLjY4NC0yLjY4NCAxLjE5OS0yLjY4NCAyLjY4NC0yLjY4NHptMCA4Mi4zMTNjLTEuNDg1IDAtMi42ODQtMS4xOTktMi42ODQtMi42ODRzMS4xOTktMi42ODQgMi42ODQtMi42ODQgMi42ODQgMS4xOTkgMi42ODQgMi42ODRjMCAxLjQ4Ni0xLjE5OSAyLjY4NC0yLjY4NCAyLjY4NHptMzguNDczLTEuNzg5Yy0yMS43MjQgMC0zOS4zNjctMTcuNjEyLTM5LjM2Ny0zOS4zNjdzMTcuNjQzLTM5LjM2OCAzOS4zNjctMzkuMzY4IDM5LjM2NyAxNy42MTIgMzkuMzY3IDM5LjM2OC0xNy42NDQgMzkuMzY3LTM5LjM2NyAzOS4zNjd6bTM4LjQ3MiAxLjc4OWMtMS40ODUgMC0yLjY4NC0xLjE5OS0yLjY4NC0yLjY4NHMxLjE5OS0yLjY4NCAyLjY4NC0yLjY4NCAyLjY4NCAxLjE5OSAyLjY4NCAyLjY4NGMwIDEuNDg2LTEuMTk4IDIuNjg0LTIuNjg0IDIuNjg0em0wLTc2Ljk0NWMtMS40ODUgMC0yLjY4NC0xLjE5OS0yLjY4NC0yLjY4NHMxLjE5OS0yLjY4NCAyLjY4NC0yLjY4NCAyLjY4NCAxLjE5OSAyLjY4NCAyLjY4NC0xLjE5OCAyLjY4NC0yLjY4NCAyLjY4NHoiLz48L2c+PC9zdmc+" class="fan-icon" alt="Fan Icon">
+                            <span class="fan-speed">${speed}%</span>
+                        </div>
+                    `;
+                    fanContainer.appendChild(fanBlock);
+                });
+            }
+
+            // Оновлення блоків температури
+            const tempContainer = document.getElementById('temp-container');
+            tempContainer.innerHTML = ''; // Очищення контейнера
+            if (data.thermosensors) {
+                data.thermosensors.forEach((temp, index) => {
+                    const tempBlock = document.createElement('div');
+                    tempBlock.classList.add('temp-block');
+                    tempBlock.innerHTML = `
+                        <div>
+                            <img src="data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjEwMiIgdmlld0JveD0iMCAwIDkzIDEwMiIgd2lkdGg9IjkzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxnIHN0eWxlPSJzdHJva2U6Izg5YzU0MDtzdHJva2Utd2lkdGg6Ni4wMDg5NDk7ZmlsbDpub25lO2ZpbGwtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lY2FwOnJvdW5kO3N0cm9rZS1saW5lam9pbjpiZXZlbCIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNC40MTg1MDggMS4zMTgzNzYpIj48cGF0aCBkPSJtMi42NTQ0ODAzNCAyNy40NDgxNzc4IDM5Ljc2MzA2OTg2IDIzLjMzNDY0MjciLz48cGF0aCBkPSJtMi4yMzU5Mjk3NiA0Mi4wOTc3MjY2IDE4LjgzNTY1MDE0LTMuODQxNjEzNi01LjQ0MTgxMzEtMTcuNTA0ODc1NiIvPjxwYXRoIGQ9Im04Mi4xODA2MjAxIDI3LjQ0ODE3NzgtMzkuNzYzMDY5OSAyMy4zMzQ2NDI3Ii8+PHBhdGggZD0ibTgyLjU5OTE3MDYgNDIuMDk3NzI2Ni0xOC44MzU2NTAxLTMuODQxNjEzNiA1LjQ0MTgxMzEtMTcuNTA0ODc1NiIvPjxwYXRoIGQ9Im04Mi4xODA2MjAxIDc0LjExNzQ2MzMtMzkuNzYzMDY5OS0yMy4zMzQ2NDI4Ii8+PHBhdGggZD0ibTgyLjU5OTE3MDYgNTkuNDY3OTE0NC0xOC44MzU2NTAxIDMuODQxNjEzNyA1LjQ0MTgxMzEgMTcuNTA0ODc1NiIvPjxwYXRoIGQ9Im0yLjY1NDQ4MDM0IDc0LjExNzQ2MzMgMzkuNzYzMDY5ODYtMjMuMzM0NjQyOCIvPjxwYXRoIGQ9Im0yLjIzNTkyOTc2IDU5LjQ2NzkxNDQgMTguODM1NjUwMTQgMy44NDE2MTM3LTUuNDQxODEzMSAxNy41MDQ4NzU2Ii8+PHBhdGggZD0ibTQyLjc0NDM4MjQgOTYuODg1OTc1Ny0uMzI2NjY4My00Ni4xMDMxNDk3Ii8+PHBhdGggZD0ibTI5Ljg0ODI1MDEgODkuOTIzNjgwMiAxMi43NDQ3NjE0LTE0LjM5MTM0NDQgMTIuNDM4NzQyIDEzLjQ2NTE4NTEiLz48cGF0aCBkPSJtNDIuNzQ0MzgyNCA0LjY3OTY2NTM0LS4zMjY2NjgzIDQ2LjEwMzE0OTc2Ii8+PHBhdGggZD0ibTI5Ljg0ODI1MDEgMTEuNjQxOTY2NCAxMi43NDQ3NjE0IDE0LjM5MTM0NDMgMTIuNDM4NzQyLTEzLjQ2NTE4NTEiLz48L2c+PC9zdmc+" class="temp-icon" alt="Temp Icon">
+                            <span class="temp-value">${temp}°C</span>
+                        </div>
+                    `;
+                    tempContainer.appendChild(tempBlock);
+                });
+            }
+
+            // Відображення блоку, якщо є дані
+            const dynamicBlock = document.getElementById('dynamic-block');
+            dynamicBlock.style.display = (data.casefan && data.casefan.length > 0) || (data.thermosensors && data.thermosensors.length > 0) ? 'block' : 'none';
+        }
+    
+        // Оновлення блоків кожні 10 секунд
+        setInterval(updateBlocks, 10000);
+
+        // Завантаження конфігурації при завантаженні сторінки
+        $(document).ready(function() {
+            loadConfig();
+
+            // Обробник натискання перемикача для автофана
+            $('#autofan-switch').change(function() {
+                var config = { AUTO_ENABLED: $(this).is(':checked') ? 1 : 0 };
+                $.post('/update_config', config);
+            });
+
+            // Обробник натискання кнопки Apply
+            $('#apply-btn').click(function() {
+                saveConfig();
+            });
+    
+            // Обробник натискання кнопки Cancel
+            $('#cancel-btn').click(function() {
+                loadConfig(); // Повернення до початкових значень
+            });
+    
+            // Початкове оновлення блоків
+            updateBlocks();
+        });
+    </script>
+</body>
+</html>

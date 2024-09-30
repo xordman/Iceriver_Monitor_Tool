@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Workers</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <style>
+        .container {
+            margin-left: 200px;
+        }
+        .input-group-append {
+            margin-left: 10px;
+        }
+        .error {
+            color: red;
+            font-size: 0.9em;
+        }
+    </style>
+    <script>
+        $(document).ready(function(){
+            function fetchWorkers() {
+                $.getJSON("/workers", function(data) {
+                    $("#worker-list").empty();
+                    $.each(data, function(index, worker) {
+                        $("#worker-list").append(
+                            `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${worker.name} (${worker.ip})
+                                <button class="btn btn-danger btn-sm remove-worker" data-ip="${worker.ip}">Remove</button>
+                            </li>`
+                        );
+                    });
+
+                    $(".remove-worker").click(function() {
+                        let ip = $(this).data("ip");
+                        $.post("/remove_worker", {ip: ip}, function() {
+                            fetchWorkers();
+                        });
+                    });
+
+                    updateLastUpdateTime();
+                });
+            }
+
+            function isValidIP(ip) {
+                const ipPattern = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+                return ipPattern.test(ip);
+            }
+
+            function updateLastUpdateTime() {
+                const now = new Date();
+                const formattedTime = now.toLocaleString('uk-UA', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+                $("#last-update").text(`Last update: ${formattedTime}`);
+            }
+
+            $("#add-worker").click(function() {
+                let ip = $("#new-worker-ip").val();
+                let name = $("#new-worker-name").val();
+                let errorMessage = "";
+
+                if (!name) {
+                    errorMessage += "Worker name cannot be empty.<br>";
+                }
+                if (!isValidIP(ip)) {
+                    errorMessage += "Invalid IP address.";
+                }
+
+                if (errorMessage) {
+                    $("#error-message").html(errorMessage).show();
+                } else {
+                    $("#error-message").hide();
+                    $.post("/add_worker", {ip: ip, name: name}, function() {
+                        $("#new-worker-ip").val('');
+                        $("#new-worker-name").val('');
+                        fetchWorkers();
+                    });
+                }
+            });
+
+            fetchWorkers();
+            setInterval(fetchWorkers, 10000);
+        });
+    </script>
+</head>
+<body>
+    {% include 'menu.html' %}
+    <div class="container">
+        <h1 class="mt-5">Worker Monitor - Manage</h1>
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" id="new-worker-name" placeholder="Enter worker name">
+            <input type="text" class="form-control" id="new-worker-ip" placeholder="Enter worker IP">
+            <div class="input-group-append">
+                <button class="btn btn-primary" id="add-worker">Add Worker</button>
+            </div>
+        </div>
+        <div id="error-message" class="error" style="display: none;"></div>
+        <ul class="list-group" id="worker-list"></ul>
+        <div id="last-update" style="color: lightblue; position: absolute; bottom: 10px;"></div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Me</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        .container {
+            margin-left: 200px;
+            margin-bottom: 50px; /* Offset for bottom block */
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+        }
+        .sidebar a {
+            color: #fff;
+            display: block;
+            padding: 10px 0;
+        }
+        .content {
+            padding: 20px;
+        }
+        .block {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .footer-fixed {
+            position: fixed;
+            bottom: 0;
+            left: 200px;
+            width: calc(100% - 200px);
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #ddd;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    {% include 'menu.html' %}
+    <div class="container">
+        <h1 class="mt-5">About Me</h1>
+        <div class="block">
+            <h2>About Me</h2>
+            <p>Hello everyone, I got into programming after becoming a miner, primarily to create tools for comfortable mining. Remember, I am a beginner, not an experienced guru)</p>
+        </div>
+        <div class="block">
+            <h2>License Agreement</h2>
+            <p>This project is my property. The use of this project is at your own risk. I am not responsible for any damage caused by the use of this project. There are no warranties or obligations.</p>
+        </div>
+        <div class="block">
+            <h2>Contact</h2>
+            <p>Discord: xordman</p>
+        </div>
+        <div class="block">
+            <h2>Donation Links</h2>
+            <p>If you want to support me, here are the donation links:</p>
+            <ul>
+                <li>PayPal: <a href="mailto:xordman@gmail.com" target="_blank">xordman@gmail.com</a></li>
+                <li>KAS: kaspa:qpxk4jrk4jfec3lc3wfcat8pt7kh2vsetm7p9euf3u6zfadyq72uja2767j6z</li>
+                <li>USDT (TRC20): TL9EDTRswXiFr1P8MzjErCBi1LbJzukszu</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
